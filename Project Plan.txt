@@ -1,0 +1,109 @@
+Step 0: Iterative Development Plan Milestone
+Version 0.1: The "Grey Box" (Sanity Check)
+0.1.1 - Define simulation parameters (Bandwidth=160MHz, Q=2048, CP=256).
+0.1.2 - Generate random bits and map them to QAM symbols (e.g., 16-QAM).
+0.1.3 - Implement the OFDM Transmitter: IFFT -> Add Cyclic Prefix.
+0.1.4 - Implement the OFDM Receiver: Remove Cyclic Prefix -> FFT.
+0.1.5 - Demap QAM symbols back to bits.
+0.1.6 - Verification: Compare input bits vs. output bits. Error must be exactly 0.
+Version 0.2: The "Ideal" Modem (AWGN)
+0.2.1 - Add Additive White Gaussian Noise (AWGN) to the signal.
+0.2.2 - Create a loop to vary SNR from 0 to 30 dB.
+0.2.3 - Calculate Bit Error Rate (BER) for each SNR step.
+0.2.4 - Verification: Plot your BER curve against the theoretical berawgn() curve in Matlab. They should overlap.
+Version 0.3: The "Cheater" Modem (Perfect CSI)
+0.3.1 - Generate a multipath channel vector h (e.g., [1, 0.4, 0.2]).
+0.3.2 - Convolve transmit signal with h (apply the channel).
+0.3.3 - The Cheat: Pass variable h directly to the receiver code. Compute its FFT (H_fft).
+0.3.4 - Implement Zero-Forcing Equalizer: Y_equalized = Y_received ./ H_fft.
+0.3.5 - Verification: Check constellation plot. The cloud of points should shrink back to distinct QAM centers.
+Version 0.4: The "Blind" Modem (Real Estimation)
+0.4.1 - Create the Preamble: 2 OFDM symbols of known BPSK/QPSK.
+0.4.2 - Prepend preamble to the data frame.
+0.4.3 - In Receiver: Extract preamble. Compute LS Estimate H_hat = Y_preamble ./ P_preamble.
+0.4.4 - Use H_hat in the equalizer instead of the cheat H_fft.
+0.4.5 - Verification: Plot Mean Square Error (MSE) of abs(H_hat - H_fft). It should decrease as SNR increases.
+Version 0.5: The "Unsynchronized" Modem (Time)
+0.5.1 - Add random zero-padding (delay) before the signal starts.
+0.5.2 - Implement the Schmidl & Cox metric: Moving window auto-correlation.
+0.5.3 - Find the index of the peak metric.
+0.5.4 - Cut the received vector starting at that index.
+0.5.5 - Verification: Feed this cut signal into Version 0.4 code. If BER is low, sync worked.
+Version 0.6: The "Drifting" Modem (Frequency)
+0.6.1 - Multiply time-domain signal by exp(j*2*pi*CFO*t).
+0.6.2 - Coarse: Measure phase difference between preamble halves. Correct signal.
+0.6.3 - Fine: Insert pilots into data symbols. Measure their tilt over time. Correct data.
+0.6.4 - Verification: Watch the constellation. It should be stable (not spinning).
+Version 1.0: The "MIMO" Modem (Final Release)
+1.0.1 - Duplicate the channel generation: h1 and h2.
+1.0.2 - Duplicate the Receiver chain (2 inputs).
+1.0.3 - Sync Averaging: Calculate Time/Freq metrics on both antennas, average them, then decide.
+1.0.4 - Implement Maximum Ratio Combining (MRC): Y_combined = Y1*H1' + Y2*H2'.
+1.0.5 - Verification: Plot BER of V1.0 (MIMO) vs V0.6 (SISO). V1.0 should be much better (steeper slope).
+Step 1: OFDM Modulation & Basic Chain
+1.1 - Theory: OFDM Fundamentals
+1.1.1 - Understand the Multi-Carrier Principle: Explain how high-rate data is split into lower-rate streams transmitted on orthogonal sub-carriers to combat frequency-selective fading. (Ref: slides_Equalization.pdf, p. 68-69; Equalization 3 - OFDM, 00:00:00–00:01:08).
+1.1.2 - The Role of IFFT/FFT: Describe how the Inverse Fast Fourier Transform (IFFT) is used at the transmitter to modulate signals onto orthogonal sub-carriers and how the FFT recovers them at the receiver. (Ref: slides_Equalization.pdf, p. 69-72; Equalization 3 - OFDM, 00:03:51–00:06:00).
+1.1.3 - Cyclic Prefix (CP): Explain how the CP eliminates Inter-Symbol Interference (ISI) and converts linear convolution into circular convolution, allowing simple frequency-domain equalization. (Ref: slides_Equalization.pdf, p. 75-77; Equalization 3 - OFDM, 00:09:36–00:13:07).
+1.1.4 - Frequency Domain Equalization (FDE): Derive the Zero-Forcing (ZF) equalizer for OFDM, showing how the received signal $Y_k = H_k X_k + N_k$ is inverted as $\hat{X}_k = Y_k / H_k$. (Ref: slides_Equalization.pdf, p. 80, 84; Equalization 3 - OFDM, 00:18:40–00:19:20).
+1.2 - Implementation: The OFDM Transceiver
+1.2.1 - Parameter Setup: Initialize simulation parameters in Matlab based on Table 1 of Project-WLModem.pdf (Bandwidth = 160 MHz, $Q = 2048$ sub-carriers, CP length $L = 256$).
+1.2.2 - Transmitter Chain: Implement:
+1.2.3 - Receiver Chain (Ideal): Implement the reverse operations:
+1.2.4 - Validation: Run the simulation with an ideal channel ($H=1$, no noise). Verify that Bit Error Rate (BER) is exactly 0.
+1.3 - Performance Assessment
+1.3.1 - AWGN Channel: Add Gaussian noise to the signal. Plot BER vs. SNR and compare with theoretical QAM curves.
+1.3.2 - Multipath Channel: Introduce a static multipath channel (e.g., h = [1, 0.5, 0.2]). Observe the constellation scattering without equalization.
+1.3.3 - One-Tap Equalizer: Implement the ZF equalizer using perfect channel knowledge (assuming you know h). Verify that the constellation points converge back to their centers.
+Step 2: Channel Estimation
+2.1 - Theory: Estimation Techniques
+2.1.1 - Preamble-Based Estimation: Explain how a known sequence (Preamble) allows the receiver to estimate the channel frequency response $H_k$. (Ref: slides_SynchroOFDM.pdf, p. 41-42; Synchronization 2, 00:16:40–00:17:20).
+2.1.2 - Conventional (LS) vs. Time-Domain Estimation: Contrast the simple Least Squares (LS) estimation (dividing received by transmitted pilots) with the more advanced Time-Domain method that exploits the fact that the channel impulse response length $L_{ch}$ is much shorter than the symbol length $Q$. (Ref: slides_SynchroOFDM.pdf, p. 43-45; Synchronization 2, 00:20:31–00:22:14).
+2.1.3 - Noise Reduction Gain: Understand the theoretical noise reduction factor of $L/Q$ achieved by time-domain processing (filtering out noise in the "silent" part of the impulse response). (Ref: slides_SynchroOFDM.pdf, p. 50; Synchronization 2, 00:26:40–00:27:19).
+2.2 - Implementation: Estimators
+2.2.1 - Preamble Construction: Create a preamble consisting of 2 identical OFDM symbols (BPSK or QPSK modulated) and prepend it to your data frame.
+2.2.2 - LS Estimator: Implement $\hat{H}{LS} = Y{preamble} ./ X_{preamble}$ in the frequency domain.
+2.2.3 - Time-Domain Estimator: Implement the refined estimator:
+2.3 - Analysis
+2.3.1 - MSE Plot: Plot the Mean Square Error (MSE) of the channel estimate vs. SNR for both LS and Time-Domain methods. Confirm the performance gap.
+2.3.2 - BER Impact: Use the estimated channel for data equalization and plot the BER.
+Step 3: Time Synchronization
+3.1 - Theory: Schmidl & Cox Algorithm
+3.1.1 - Packet Detection Principle: Explain how the periodicity of the preamble (two identical halves) is used to detect the packet start. (Ref: slides_SynchroOFDM.pdf, p. 26-28; Synchronization 2, 00:00:36–00:03:00).
+3.1.2 - The Auto-Correlation Metric: Study the metric $M(d) = |P(d)|^2 / R(d)^2$, where $P(d)$ is the auto-correlation and $R(d)$ is the energy. Explain why this metric plateaus or peaks when the window aligns with the repetitive preamble. (Ref: slides_SynchroOFDM.pdf, p. 30-31; Synchronization 2, 00:06:30–00:07:35).
+3.2 - Implementation: Time Acquisition
+3.2.1 - Simulation Setup: Add a random delay (STO) of zeros before your transmitted packet.
+3.2.2 - Metric Calculation: Implement the sliding window auto-correlation to calculate the timing metric $M(d)$ for every sample.
+3.2.3 - Peak Detection: Find the index where $M(d)$ is maximum. This is your estimated start of the frame.
+3.3 - Analysis
+3.3.1 - MSE of Timing: Calculate the error between the estimated start index and the actual delay. Plot MSE vs. SNR.
+3.3.2 - Robustness: Verify that if the timing is slightly off (but within the Cyclic Prefix), the system still works (orthogonality is preserved, only a phase rotation is introduced).
+Step 4: Frequency Synchronization (CFO)
+4.1 - Theory: CFO Effects & Correction
+4.1.1 - Impact of CFO: Describe the three effects: Common Phase Error (rotation), Amplitude reduction (negligible), and Inter-Carrier Interference (ICI - loss of orthogonality). (Ref: slides_SynchroOFDM.pdf, p. 15; Synchronization 1, 00:15:06–00:15:48).
+4.1.2 - Coarse Acquisition: Explain how the phase difference $\phi$ between the two identical halves of the preamble relates to the frequency offset: $\Delta \omega = \phi / (N \cdot T)$. (Ref: slides_SynchroOFDM.pdf, p. 34-36; Synchronization 2, 00:11:50–00:12:40).
+4.1.3 - Fine Tracking: Explain why residual CFO causes a rolling phase over time and how pilots embedded in data symbols are used to track and correct this. (Ref: slides_SynchroOFDM.pdf, p. 55-58; Synchronization 2, 00:32:40–00:34:40).
+4.2 - Implementation: Frequency Correction
+4.2.1 - Simulation Update: Multiply your time-domain signal by $e^{j 2\pi \Delta f t}$ to simulate CFO.
+4.2.2 - Coarse Corrector: Use the phase of the auto-correlation peak (from Step 3) to estimate $\Delta f$. Apply the negative phase ramp to correct the signal before the FFT.
+4.2.3 - Fine Tracking: Insert pilot tones (e.g., at indices [-21, -7, 7, 21]) in your data symbols. In the receiver, measure their phase rotation from symbol to symbol and correct the data sub-carriers accordingly.
+4.3 - Analysis
+4.3.1 - Constellation Check: Visualize the constellation before and after tracking. It should be spinning without tracking and stable with tracking.
+4.3.2 - Performance: Plot BER vs. SNR with full synchronization (Time + Freq + Channel Est) active.
+Step 5: Multiple Antennas (MIMO) & Diversity
+5.1 - Theory: Diversity Gain
+5.1.1 - Spatial Diversity: Explain how multiple receive antennas (SIMO) provide independent copies of the signal, reducing the probability of deep fades. (Ref: slides_MIMO.pdf, p. 8, 15; Multiple antennas 2, 00:03:35–00:04:00).
+5.1.2 - Maximum Ratio Combining (MRC): Describe the optimal combiner: multiply each branch by the conjugate of its channel response ($h^*$) and sum them up. (Ref: slides_MIMO.pdf, p. 23; Multiple antennas 2, 00:02:00–00:03:00).
+5.1.3 - Array vs. Diversity Gain: Distinguish between Array Gain (SNR shift due to coherent combining) and Diversity Gain (steeper BER slope). (Ref: slides_MIMO.pdf, p. 24-25; Multiple antennas 2, 00:04:50–00:06:15).
+5.2 - Implementation: SIMO
+5.2.1 - Channel Update: Generate independent Rayleigh fading channels for $N_R$ antennas (e.g., $1 \times 2$ and $1 \times 4$).
+5.2.2 - Sync Update: Compute synchronization metrics (Time/Freq) on each antenna and average them to improve detection reliability.
+5.2.3 - MRC Equalizer: Implement the combiner: $\hat{X} = \frac{\sum (Y_i \cdot H_i^*)}{\sum |H_i|^2}$.
+5.3 - Analysis
+5.3.1 - Diversity Plot: Compare BER curves for $1 \times 1$, $1 \times 2$, and $1 \times 4$ systems.
+5.3.2 - Interpretation: Confirm the change in slope (diversity) and horizontal shift (array gain) in your report.
+Step 6: Final Reporting
+6.1: Clean up Matlab code and organize into functions.
+6.2: Write the report following the structure: Introduction -> System Model -> Synchronization (Theory & Results) -> Channel Estimation (Theory & Results) -> MIMO (Theory & Results) -> Conclusion.
+6.3: Ensure every plot has clearly labeled axes, legends, and a discussion paragraph explaining why the curve looks that way.
+Goal: Synthesize everything into the final deliverable.
