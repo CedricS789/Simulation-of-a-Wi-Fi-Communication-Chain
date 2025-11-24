@@ -60,23 +60,77 @@ rx_bits = qamdemod(rx_syms, M, 'OutputType', 'bit', 'UnitAveragePower', true);
 
 % BER Calculation
 [num_errors, ber] = biterr(tx_bits, rx_bits);
-fprintf('Bit Error Rate (BER): %.4e\n', ber);
+fprintf('BER = %.4e\n', ber);
 
-% Validation: Verify BER is 0
-if ber == 0
-    disp('Validation Successful: BER is exactly 0.');
-else
-    warning('Validation Failed: BER is %.4e (should be 0).', ber);
+
+%%  Receiver Chain (AWGN Channel)
+ber_sim = zeros(length(SNR_dB), 1);
+
+for i = 1:length(SNR_dB)
+    EbNo = SNR_dB(i);
+
+    %   Convert Eb/N0 to SNR
+    %   SNR = (Eb/N0) * (Bits per Symbol) * (Code Rate)
+    %   Code Rate here accounts for CP overhead: N_sub / (N_sub + L_cp)
+    snr = EbNo + 10*log10(k) + 10*log10(N_sub / (N_sub + L_cp));
+
+    %   AWGN Channel
+    rx_signal = awgn(tx_signal, snr, 'measured');
+
+    %   S/P Conversion (Reshape)
+    rx_matrix_cp = reshape(rx_signal, N_sub + L_cp, L_preamble + L_data);
+
+    %   CP Removal
+    rx_matrix = rx_matrix_cp(L_cp+1:end, :);
+
+    %   FFT
+    rx_grid_full = fft(rx_matrix, N_sub);
+
+    %   Extract Data (Discard Preamble)
+    rx_syms_grid = rx_grid_full(:, L_preamble+1:end);
+
+    %   P/S Conversion (Serialize)
+    rx_syms = rx_syms_grid(:);
+
+    %   QAM Demapping
+    rx_bits = qamdemod(rx_syms, M, 'OutputType', 'bit', 'UnitAveragePower', true);
+
+    %   BER Calculation
+    [~, ber_sim(i)] = biterr(tx_bits, rx_bits);
 end
 
-%% Plots
-% First 50 bits
-% Constellation of Transmitted Symbols
-% Time Domain Signal (First 200 samples)
+%% Receiver Chain (Multipath Channel)
+h = [1, 0.5, 0.2]; % Static multipath channel (represented by a filter kernel)
+rx_signal_multipath = filter(h, 1, tx_signal); % Apply channel
 
+% S/P Conversion (Reshape)
+rx_matrix_cp_multipath = reshape(rx_signal_multipath, N_sub + L_cp, L_preamble + L_data);
+
+% CP Removal
+rx_matrix_multipath = rx_matrix_cp_multipath(L_cp+1:end, :);
+
+% FFT
+rx_matrix_full_multipath = fft(rx_matrix_multipath, N_sub);
+
+% Extract Data (Discard Preamble)
+rx_syms_matrix_multipath = rx_matrix_full_multipath(:, L_preamble+1:end);
+
+% P/S Conversion (Serialize)
+rx_syms_multipath = rx_syms_matrix_multipath(:);
+
+%%  Theoretical BER
+ber_theo = berawgn(SNR_dB, 'qam', M);
+
+%%  Plots
+%   First 50 bits
+%   Constellation of Transmitted Symbols
+%   Time Domain Signal (First 200 samples)
+%   BER vs Eb/N0
+
+%   Transmitter Visualization
 figure('Name', 'Transmitter Visualization', 'Color', 'w', 'Position', [100, 100, 1200, 400]);
 
-% First 50 bits
+%   First 50 bits
 subplot(1,3,1);
 stem(tx_bits(1:50), 'filled', 'LineWidth', 1.5, 'Color', '#0072BD');
 title('First 50 Transmitted Bits', 'Interpreter', 'latex', 'FontSize', 14);
@@ -85,7 +139,7 @@ ylabel('Value', 'Interpreter', 'latex', 'FontSize', 12);
 ylim([-0.2 1.2]);
 grid on; set(gca, 'TickLabelInterpreter', 'latex', 'FontSize', 11);
 
-% Symbols (Constellation)
+%   Symbols (Constellation)
 subplot(1,3,2);
 plot(real(tx_syms), imag(tx_syms), 'o', 'MarkerSize', 6, ...
     'MarkerFaceColor', '#D95319', 'MarkerEdgeColor', 'none');
@@ -95,7 +149,7 @@ ylabel('Quadrature (Q)', 'Interpreter', 'latex', 'FontSize', 12);
 grid on; axis square;
 set(gca, 'TickLabelInterpreter', 'latex', 'FontSize', 11);
 
-% Signal (Time Domain)
+%   Signal (Time Domain)
 subplot(1,3,3);
 t_plot = (0:199); % First 200 samples
 plot(t_plot, real(tx_signal(1:200)), 'LineWidth', 1.2, 'Color', '#77AC30');
@@ -105,30 +159,44 @@ ylabel('Amplitude', 'Interpreter', 'latex', 'FontSize', 12);
 grid on; xlim([0 200]);
 set(gca, 'TickLabelInterpreter', 'latex', 'FontSize', 11);
 
-% Save the plot
+%   Save the plot
 saveas(gcf, 'Transmitter_Viz.png');
 
+%   Receiver Visualization
 figure('Name', 'Receiver Visualization', 'Color', 'w', 'Position', [100, 550, 800, 400]);
 
-% Received Constellation
+%   Received Constellation (Last SNR)
 subplot(1,2,1);
 plot(real(rx_syms), imag(rx_syms), 'o', 'MarkerSize', 6, ...
     'MarkerFaceColor', '#D95319', 'MarkerEdgeColor', 'none');
-title('Received Constellation', 'Interpreter', 'latex', 'FontSize', 14);
+title(['Received Constellation ($E_b/N_0$ = ' num2str(SNR_dB(end)) ' dB)'], 'Interpreter', 'latex', 'FontSize', 14);
 xlabel('In-Phase (I)', 'Interpreter', 'latex', 'FontSize', 12);
 ylabel('Quadrature (Q)', 'Interpreter', 'latex', 'FontSize', 12);
 grid on; axis square;
 set(gca, 'TickLabelInterpreter', 'latex', 'FontSize', 11);
 
-% First 50 Received Bits
+%   BER vs Eb/N0
 subplot(1,2,2);
-stem(rx_bits(1:50), 'filled', 'LineWidth', 1.5, 'Color', '#0072BD');
-title('First 50 Received Bits', 'Interpreter', 'latex', 'FontSize', 14);
-xlabel('Bit Index', 'Interpreter', 'latex', 'FontSize', 12);
-ylabel('Value', 'Interpreter', 'latex', 'FontSize', 12);
-ylim([-0.2 1.2]);
+semilogy(SNR_dB, ber_theo, 'k-', 'LineWidth', 1.5); hold on;
+semilogy(SNR_dB, ber_sim, 'bo--', 'LineWidth', 1.5, 'MarkerFaceColor', 'b');
+title('BER vs $E_b/N_0$', 'Interpreter', 'latex', 'FontSize', 14);
+xlabel('$E_b/N_0$ [dB]', 'Interpreter', 'latex', 'FontSize', 12);
+ylabel('BER', 'Interpreter', 'latex', 'FontSize', 12);
+legend('Theoretical', 'Simulated', 'Interpreter', 'latex', 'FontSize', 11);
 grid on; set(gca, 'TickLabelInterpreter', 'latex', 'FontSize', 11);
 
-% Save the plot
+%   Save the plot
 saveas(gcf, 'Receiver_Viz.png');
 
+%   Multipath Visualization
+figure('Name', 'Multipath Visualization', 'Color', 'w', 'Position', [100, 100, 600, 600]);
+plot(real(rx_syms_multipath), imag(rx_syms_multipath), 'o', 'MarkerSize', 4, ...
+    'MarkerFaceColor', '#7E2F8E', 'MarkerEdgeColor', 'none');
+title('Multipath Channel Constellation (No Equalization)', 'Interpreter', 'latex', 'FontSize', 14);
+xlabel('In-Phase (I)', 'Interpreter', 'latex', 'FontSize', 12);
+ylabel('Quadrature (Q)', 'Interpreter', 'latex', 'FontSize', 12);
+grid on; axis square;
+set(gca, 'TickLabelInterpreter', 'latex', 'FontSize', 11);
+
+%   Save the plot
+saveas(gcf, 'Multipath_Viz.png');
