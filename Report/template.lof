@@ -1,0 +1,14 @@
+\babel@toc {english}{}\relax 
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {1.1}{\ignorespaces BER vs SNR in AWGN Channel (Validation)}}{7}{figure.caption.5}%
+\contentsline {figure}{\numberline {1.2}{\ignorespaces Constellation: Multipath Scattering vs. Perfect ZF Equalization}}{8}{figure.caption.6}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {2.1}{\ignorespaces MSE of Channel Estimate: LS vs Time-Domain}}{10}{figure.caption.7}%
+\contentsline {figure}{\numberline {2.2}{\ignorespaces BER Performance: Perfect CSI vs LS vs Time-Domain}}{10}{figure.caption.8}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {3.1}{\ignorespaces Timing Metric $M(d)$ vs Sample Index}}{12}{figure.caption.9}%
+\contentsline {figure}{\numberline {3.2}{\ignorespaces Constellation with CFO: Spinning vs Corrected}}{13}{figure.caption.10}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {4.1}{\ignorespaces BER Comparison: SISO vs SIMO (Diversity Slope Analysis)}}{15}{figure.caption.11}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }

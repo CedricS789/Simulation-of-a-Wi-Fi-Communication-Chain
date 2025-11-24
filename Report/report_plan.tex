@@ -1,0 +1,377 @@
+\documentclass{ULBreportEnhanced}
+\sceau{Pictures/sceauULB.jpg}
+\addbibresource{biblio.bib}
+
+%===============================================================================
+% BASIC PACKAGES
+%===============================================================================
+\usepackage{graphicx}
+\usepackage{mathtools}
+\usepackage[bottom]{footmisc}
+\usepackage{booktabs}
+\usepackage{siunitx}
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric}
+\usepackage{microtype}
+\usepackage{amsmath} 
+\usepackage{amssymb}
+
+%===============================================================================
+% CODE LISTING SETUP (for Appendix)
+%===============================================================================
+\usepackage{xcolor}      
+\usepackage{listings}    
+\usepackage[most]{tcolorbox} 
+
+\definecolor{PrimaryBlue}{HTML}{0033A0}
+\definecolor{LightGray}{HTML}{F5F5F5}
+\definecolor{MediumGray}{HTML}{666666}
+\definecolor{CodePurple}{HTML}{9D34B2}
+
+\lstdefinestyle{myMatlabStyle}{
+	backgroundcolor=\color{LightGray},
+	commentstyle=\color{MediumGray!80!white}\itshape,
+	keywordstyle=\color{PrimaryBlue}\bfseries,
+	numberstyle=\tiny\color{MediumGray!80!white},
+	stringstyle=\color{CodePurple},
+	basicstyle=\ttfamily\footnotesize\color{black},
+	breakatwhitespace=false,
+	breaklines=true,
+	captionpos=b,
+	keepspaces=true,
+	numbers=left,
+	numbersep=5pt,
+	showspaces=false,
+	showstringspaces=false,
+	showtabs=false,
+	tabsize=2,
+	frame=none
+}
+
+\lstset{style=myMatlabStyle, language=Matlab}
+
+\newtcbinputlisting{\inputMatlab}[1]{
+	listing file={#1},
+	listing only,
+	breakable,
+	colback=LightGray,
+	colframe=PrimaryBlue!75!white,
+	fonttitle=\bfseries\ttfamily,
+	coltitle=white,
+	colbacktitle=PrimaryBlue,
+	title=#1,
+	arc=2mm,
+	boxrule=1pt,
+	listing options={style=myMatlabStyle}
+}
+
+%===============================================================================
+% DOCUMENT FORMATTING
+%===============================================================================
+\renewcommand{\arraystretch}{2}   
+\setlength{\tabcolsep}{12pt}      
+\setlength{\jot}{7pt}             
+\sisetup{detect-all, separate-uncertainty=true}
+
+% Helper command for image placeholders
+\newcommand{\imageplaceholder}[2]{
+	\begin{figure}[htbp]
+		\centering
+		\framebox{\parbox{0.8\textwidth}{\centering
+				\vspace{2cm}
+				\textbf{Image Placeholder: #1} \\
+				\small\textit{filename: #2}
+				\vspace{2cm}
+		}}
+		\caption{#1}
+		\label{fig:#2}
+	\end{figure}
+}
+
+%===============================================================================
+% DOCUMENT START
+%===============================================================================
+\begin{document}
+	% Standard Title Page
+	\title{\textbf{Simulating a Wi-Fi Communication Chain}\\
+		\large Course: ELEC-H401}
+	\author{
+		\textit{Authors:}\\
+		Student Name 1\\
+		Student Name 2
+		\and
+		\textit{Professor:}\\
+		François Horlin
+	}
+	\date{2025}
+	\maketitle
+	
+	\tableofcontents
+	\newpage
+	\listoffigures
+	\listoftables
+	\newpage
+	
+	%===========================================================================
+	% CHAPTER 1: INTRODUCTION (UNNUMBERED)
+	%===========================================================================
+	\chapter*{Introduction}
+	\addcontentsline{toc}{chapter}{Introduction}
+	
+	\section{Context and Objectives}
+	\begin{itemize}
+		\item \textbf{Context:}
+		\begin{itemize}
+			\item Discuss the evolution of wireless standards, specifically focusing on the requirements of IEEE 802.11ax (Wi-Fi 6) such as high data rates and spectral efficiency.
+			\item Explain the challenge of multipath propagation in indoor environments and how it leads to frequency-selective fading.
+			\item Introduce OFDM as the modulation technique of choice to combat ISI and MIMO as the key to increasing capacity and reliability.
+		\end{itemize}
+		\item \textbf{Objectives:}
+		\begin{itemize}
+			\item State the primary goal: to build a comprehensive baseband simulation in Matlab that mirrors a real-world Wi-Fi transceiver.
+			\item Define specific technical targets: achieving bit-exact transmission in ideal conditions, implementing robust synchronization algorithms, and demonstrating diversity gain with multiple antennas.
+			\item List the system parameters explicitly: Bandwidth ($160$ MHz), Subcarriers ($Q=2048$), Cyclic Prefix ($L_{CP}=256$), and Carrier Frequency ($5$ GHz).
+		\end{itemize}
+	\end{itemize}
+	
+	\section{Project Structure}
+	\begin{itemize}
+		\item \textbf{Methodology:} Explain the iterative design philosophy---starting from a simple SISO link with perfect synchronization and progressively adding non-idealities (channel, timing offset, CFO) and their corresponding mitigation techniques.
+		\item \textbf{Report Organization:}
+		\begin{itemize}
+			\item Chapter 2 establishes the foundational OFDM model.
+			\item Chapter 3 details how the channel is estimated and equalized.
+			\item Chapter 4 addresses the critical issues of Time and Frequency synchronization.
+			\item Chapter 5 expands the system to Multi-Antenna (MIMO) configurations.
+		\end{itemize}
+	\end{itemize}
+	
+	%===========================================================================
+	% CHAPTER 2: OFDM SYSTEM MODEL
+	%===========================================================================
+	\chapter{OFDM System Model}
+	
+	\section{Theoretical Background}
+	\subsection{Multi-Carrier Principle and Orthogonality}
+	\begin{itemize}
+		\item \textbf{Concept:} Explain why we split a high-rate serial stream into $N$ parallel low-rate substreams. Mention that this increases the symbol duration $T_s$ beyond the channel delay spread $\tau_{max}$, reducing the impact of ISI.
+		\item \textbf{Orthogonality:} Define the condition for subcarrier spacing ($\Delta f = 1/T$) that allows overlapping spectra without interference at the sampling points.
+		\item \textbf{Mathematical Formulation:}
+		\begin{itemize}
+			\item Write down the IFFT equation used at the transmitter: $x[n] = \frac{1}{\sqrt{Q}} \sum_{k=0}^{Q-1} X_k e^{j 2\pi k n / Q}$.
+			\item Describe the corresponding FFT operation at the receiver to recover the data symbols.
+		\end{itemize}
+	\end{itemize}
+	
+	\subsection{Cyclic Prefix and Frequency Domain Equalization}
+	\begin{itemize}
+		\item \textbf{Cyclic Prefix (CP):} Describe the operation of copying the last $L$ samples to the front of the symbol. Explain its dual role: acting as a guard interval to eliminate ISI and converting the channel's linear convolution into a circular convolution.
+		\item \textbf{Key Result:} Derive or state the property that circular convolution in time corresponds to scalar multiplication in the frequency domain: $Y_k = H_k X_k + N_k$. This justifies the use of a simple one-tap zero-forcing equalizer.
+	\end{itemize}
+	
+	\section{Implementation: The OFDM Transceiver}
+	\subsection{Simulation Parameters and Architecture}
+	\begin{itemize}
+		\item \textbf{Architecture:} Provide a high-level block diagram description of the implemented transceiver (Bits $\to$ Mapper $\to$ IFFT $\to$ CP $\to$ Channel $\to$ CP Removal $\to$ FFT $\to$ Demapper).
+		\item \textbf{Parameters:} Detail the specific values used ($Q=2048$, $L_{CP}=256$, Modulation scheme).
+	\end{itemize}
+	
+	\subsection{Sanity Check: The "Grey Box"}
+	\begin{itemize}
+		\item \textbf{Verification:} Describe the test performed with an ideal channel ($H(f)=1$, no noise).
+		\item \textbf{Result:} Confirm that the Bit Error Rate (BER) was exactly 0. This proves that the IFFT/FFT scaling and CP insertion/removal logic are correctly implemented.
+	\end{itemize}
+	
+	\section{Performance Assessment}
+	\subsection{AWGN Performance}
+	\begin{itemize}
+		\item Present the plot of BER vs. SNR in an AWGN channel.
+		\item Compare your simulation curve with the theoretical `berawgn` curve.
+		\item Discuss any deviations; a perfect match validates the noise generation and signal power normalization.
+	\end{itemize}
+	\imageplaceholder{BER vs SNR in AWGN Channel (Validation)}{ber-awgn-validation.png}
+	
+	\subsection{Multipath Channel and One-Tap Equalization}
+	\begin{itemize}
+		\item Introduce the static multipath channel model used (e.g., `h = [1, 0.5, 0.2]`).
+		\item Show the "cloud" constellation plot before equalization to visualize the effect of multipath scattering.
+		\item Describe the Zero-Forcing (ZF) equalizer implementation assuming Perfect Channel State Information (CSI).
+		\item Show the "corrected" constellation plot, demonstrating how the points converge back to their ideal QAM centers.
+	\end{itemize}
+	\imageplaceholder{Constellation: Multipath Scattering vs. Perfect ZF Equalization}{constellation-equalized.png}
+	
+	%===========================================================================
+	% CHAPTER 3: CHANNEL ESTIMATION AND EQUALIZATION
+	%===========================================================================
+	\chapter{Channel Estimation and Equalization}
+	
+	\section{Estimation Theory}
+	\subsection{Preamble-Based Estimation}
+	\begin{itemize}
+		\item Explain the realistic constraint: the receiver does not know the channel response $H_k$.
+		\item Describe the solution: transmitting a "Preamble" consisting of known pilot symbols at the start of the frame.
+	\end{itemize}
+	
+	\subsection{LS vs. Time-Domain Estimation}
+	\begin{itemize}
+		\item \textbf{Least Squares (LS):} Define the estimator $\hat{H}_{LS}[k] = Y_{preamble}[k] / X_{preamble}[k]$. Explain its limitation: it estimates each subcarrier independently, so the estimation error variance is determined solely by the SNR.
+		\item \textbf{Time-Domain Estimation:}
+		\begin{itemize}
+			\item Explain the insight: the true channel impulse response has a finite length $L_{ch}$ which is much shorter than the symbol length $Q$.
+			\item Describe the noise reduction algorithm: IFFT of $\hat{H}_{LS}$ $\to$ Windowing (keeping only the first $L_{ch}$ samples) $\to$ FFT.
+			\item State the theoretical gain: filtering out noise improves the MSE by a factor of roughly $Q/L_{ch}$.
+		\end{itemize}
+	\end{itemize}
+	
+	\section{Implementation of Estimators}
+	\subsection{Preamble Construction}
+	\begin{itemize}
+		\item Describe the specific structure of the preamble used (e.g., 2 identical OFDM symbols, BPSK modulated for robustness).
+	\end{itemize}
+	
+	\subsection{Algorithms Implementation}
+	\begin{itemize}
+		\item Briefly describe the Matlab functions written for both the LS and Time-Domain estimators.
+		\item Mention the window length parameter used for the Time-Domain estimator (typically equal to the CP length).
+	\end{itemize}
+	
+	\section{Analysis and Results}
+	\subsection{Estimation Accuracy (MSE)}
+	\begin{itemize}
+		\item Present the plot of Mean Square Error (MSE) of the channel estimate vs. SNR.
+		\item Analyze the results: The Time-Domain curve should be significantly lower than the LS curve, confirming the noise reduction theory.
+	\end{itemize}
+	\imageplaceholder{MSE of Channel Estimate: LS vs Time-Domain}{mse-channel-estimation.png}
+	
+	\subsection{BER Impact of Real Estimation}
+	\begin{itemize}
+		\item Present a plot comparing BER curves for three scenarios: Perfect CSI, LS Estimation, and Time-Domain Estimation.
+		\item Conclusion: Time-Domain estimation yields a BER curve that is much closer to the ideal Perfect CSI lower bound than the LS estimator.
+	\end{itemize}
+	\imageplaceholder{BER Performance: Perfect CSI vs LS vs Time-Domain}{ber-multipath-comparison.png}
+	
+	%===========================================================================
+	% CHAPTER 4: SYNCHRONIZATION
+	%===========================================================================
+	\chapter{Synchronization}
+	
+	\section{Time Synchronization}
+	\subsection{Theory: Schmidl \& Cox Algorithm}
+	\begin{itemize}
+		\item \textbf{Problem:} Define Sampling Time Offset (STO)---the receiver doesn't know when the packet starts.
+		\item \textbf{Algorithm:} Explain how the algorithm exploits the periodicity of the preamble (two identical halves).
+		\item \textbf{Metric:} Define the timing metric $M(d) = |P(d)|^2 / (R(d))^2$, explaining the auto-correlation term $P(d)$ and the energy normalization term $R(d)$.
+	\end{itemize}
+	
+	\subsection{Implementation: Packet Detection}
+	\begin{itemize}
+		\item Describe the simulation setup: inserting a random delay (zeros) before the transmitted packet.
+		\item Explain the sliding window implementation used to calculate $M(d)$ efficiently.
+	\end{itemize}
+	
+	\subsection{Analysis: Timing MSE and Robustness}
+	\begin{itemize}
+		\item Show the plot of the timing metric $M(d)$ vs. sample index. Point out the characteristic "plateau" or peak at the correct start index.
+		\item Discuss robustness: Explain that as long as the estimated start point falls within the Cyclic Prefix (and before the ISI region), orthogonality is preserved. The only side effect is a linear phase rotation in frequency, which is handled by the equalizer.
+	\end{itemize}
+	\imageplaceholder{Timing Metric $M(d)$ vs Sample Index}{timing-metric-schmidl-cox.png}
+	
+	\section{Frequency Synchronization (CFO)}
+	\subsection{Theory: CFO Effects and Correction}
+	\begin{itemize}
+		\item \textbf{Cause:} Attribute CFO to the mismatch between transmitter and receiver local oscillators.
+		\item \textbf{Effects:}
+		\begin{itemize}
+			\item \textit{Common Phase Error (CPE):} A rotation of the constellation that grows with time.
+			\item \textit{Inter-Carrier Interference (ICI):} Loss of orthogonality, behaving like noise.
+		\end{itemize}
+		\item \textbf{Correction Strategy:}
+		\begin{itemize}
+			\item \textit{Coarse Acquisition:} Estimating fractional CFO $\Delta f$ from the phase difference between the two preamble halves.
+			\item \textit{Fine Tracking:} Using pilot subcarriers embedded in data symbols to track and correct residual phase rotation symbol-by-symbol.
+		\end{itemize}
+	\end{itemize}
+	
+	\subsection{Implementation: Coarse and Fine Tracking}
+	\begin{itemize}
+		\item Describe adding a CFO term $e^{j 2\pi \Delta f t}$ to the time-domain signal.
+		\item Detail the correction blocks: initial de-rotation based on the preamble, followed by the pilot tracking loop during data demodulation.
+	\end{itemize}
+	
+	\subsection{Analysis: Constellation Stability}
+	\begin{itemize}
+		\item Present "Before" vs. "After" constellation plots.
+		\item \textbf{Before:} A spinning circle of points due to uncorrected CFO.
+		\item \textbf{After:} A stable, clean constellation locked to the grid.
+		\item Discuss the range of CFO that can be corrected (limited by subcarrier spacing).
+	\end{itemize}
+	\imageplaceholder{Constellation with CFO: Spinning vs Corrected}{constellation-cfo-tracking.png}
+	
+	%===========================================================================
+	% CHAPTER 5: MULTIPLE ANTENNAS (MIMO)
+	%===========================================================================
+	\chapter{Multi-Antenna Systems}
+	
+	\section{MIMO Theory}
+	\subsection{Spatial Diversity and Array Gain}
+	\begin{itemize}
+		\item \textbf{Spatial Diversity:} Explain that signals arriving at spatially separated antennas fade independently. This reduces the probability that all paths are in a deep fade simultaneously.
+		\item \textbf{Array Gain:} Explain that using multiple receive antennas captures more total signal energy, improving the average SNR.
+		\item \textbf{Diversity Gain:} Describe how this manifests as a change in the slope of the BER curve (steeper slope = higher diversity order).
+	\end{itemize}
+	
+	\subsection{Maximum Ratio Combining (MRC)}
+	\begin{itemize}
+		\item Derive or state the optimal MRC combiner rule: $\hat{y} = \frac{\sum h_i^* r_i}{\sum |h_i|^2}$.
+		\item Explain that this weighting scheme maximizes the SNR of the combined signal by favoring stronger antenna branches.
+	\end{itemize}
+	
+	\section{Implementation: SIMO Architecture}
+	\subsection{Channel Generation for $N_R$ Antennas}
+	\begin{itemize}
+		\item Describe generating independent Rayleigh fading channel coefficients for each antenna in the $1 \times 2$ and $1 \times 4$ configurations.
+	\end{itemize}
+	
+	\subsection{Synchronization Averaging and MRC Equalizer}
+	\begin{itemize}
+		\item Explain the strategy for synchronization in SIMO: calculating Schmidl \& Cox metrics and CFO estimates on all antennas independently, then averaging them to improve detection reliability.
+		\item Describe the implementation of the MRC combining rule in the equalizer.
+	\end{itemize}
+	
+	\section{Analysis: Diversity Gain}
+	\subsection{Performance Comparison: $1 \times 1$, $1 \times 2$, $1 \times 4$}
+	\begin{itemize}
+		\item Present the combined BER vs. SNR plot for SISO, SIMO 1x2, and SIMO 1x4.
+		\item \textbf{Slope Analysis:} Confirm that the $1 \times 2$ curve falls much faster (slope $\approx 2$) than the $1 \times 1$ curve (slope $\approx 1$).
+		\item \textbf{Array Gain:} Verify the horizontal SNR shift (approx. $3$ dB gain for doubling antennas).
+	\end{itemize}
+	\imageplaceholder{BER Comparison: SISO vs SIMO (Diversity Slope Analysis)}{ber-mimo-diversity.png}
+	
+	%===========================================================================
+	% CHAPTER 6: CONCLUSION
+	%===========================================================================
+	\chapter{Conclusion}
+	\section{Summary of Achievements}
+	\begin{itemize}
+		\item Recap the successful design and simulation of the complete baseband chain.
+		\item Highlight that the final system is a standard-compliant OFDM link capable of robust operation under multipath fading, timing offsets, and frequency offsets.
+	\end{itemize}
+	
+	\section{Critical Analysis of Results}
+	\begin{itemize}
+		\item Discuss the trade-offs encountered, such as the computational complexity of Time-Domain estimation vs. its performance gain, or the overhead of pilot subcarriers vs. the ability to track CFO.
+	\end{itemize}
+	
+	\section{Future Perspectives}
+	\begin{itemize}
+		\item Suggest potential future improvements, such as implementing Spatial Multiplexing (V-BLAST) for higher data rates, adding Forward Error Correction (FEC) coding, or simulating realistic packet-based traffic.
+	\end{itemize}
+	
+	%===========================================================================
+	% APPENDIX
+	%===========================================================================
+	\appendix
+	\chapter{Matlab Code}
+	% \inputMatlab{main.m} 
+	
+\end{document}
