@@ -38,7 +38,7 @@ tx_cp = [tx_time_full(end-L_cp+1:end, :); tx_time_full];
 tx_signal = tx_cp(:);                                   % (P/S Conversion)
 
 %% 1.2.3 - Receiver Chain (ideal)
-rx_signal = tx_signal;                                  % Assume ideal channel (rx_signal = tx_signal)  
+rx_signal = tx_signal;                                  % Assume ideal channel (rx_signal = tx_signal)
 
 % S/P Conversion (Reshape)
 rx_matrix_cp = reshape(rx_signal, N_sub + L_cp, L_preamble + L_data);
@@ -100,7 +100,8 @@ for i = 1:length(SNR_dB)
 end
 
 %% Receiver Chain (Multipath Channel)
-h = [1, 0.5, 0.2]; % Static multipath channel (represented by a filter kernel)
+h = rand(1, 3); % Random multipath channel
+
 rx_signal_multipath = filter(h, 1, tx_signal); % Apply channel
 
 % S/P Conversion (Reshape)
@@ -120,6 +121,21 @@ rx_syms_multipath = rx_syms_matrix_multipath(:);
 
 %%  Theoretical BER
 ber_theo = berawgn(SNR_dB, 'qam', M);
+
+
+%% Frequency Domain Channel Equalization with Zero Forcing
+% Transform the time domain h into frequency domain
+H_fft = fft(h, N_sub);
+
+% Expand the channel to match data dimension
+H_matrix = repmat(H_fft.', 1, L_data);
+
+% Apply Zero Forcing Equalization
+rx_syms_matrix_equalized = rx_syms_matrix_multipath ./ H_matrix;
+
+% P/S Conversion (Serialize)
+rx_syms_equalized = rx_syms_matrix_equalized(:);
+
 
 %%  Plots
 %   First 50 bits
@@ -189,10 +205,23 @@ grid on; set(gca, 'TickLabelInterpreter', 'latex', 'FontSize', 11);
 saveas(gcf, 'Receiver_Viz.png');
 
 %   Multipath Visualization
-figure('Name', 'Multipath Visualization', 'Color', 'w', 'Position', [100, 100, 600, 600]);
+figure('Name', 'Multipath Visualization', 'Color', 'w', 'Position', [100, 100, 1000, 500]);
+
+%   Before Equalization
+subplot(1,2,1);
 plot(real(rx_syms_multipath), imag(rx_syms_multipath), 'o', 'MarkerSize', 4, ...
     'MarkerFaceColor', '#7E2F8E', 'MarkerEdgeColor', 'none');
-title('Multipath Channel Constellation (No Equalization)', 'Interpreter', 'latex', 'FontSize', 14);
+title('Before Equalization', 'Interpreter', 'latex', 'FontSize', 14);
+xlabel('In-Phase (I)', 'Interpreter', 'latex', 'FontSize', 12);
+ylabel('Quadrature (Q)', 'Interpreter', 'latex', 'FontSize', 12);
+grid on; axis square;
+set(gca, 'TickLabelInterpreter', 'latex', 'FontSize', 11);
+
+%   After Equalization
+subplot(1,2,2);
+plot(real(rx_syms_equalized), imag(rx_syms_equalized), 'o', 'MarkerSize', 4, ...
+    'MarkerFaceColor', '#77AC30', 'MarkerEdgeColor', 'none');
+title('After Zero-Forcing Equalization', 'Interpreter', 'latex', 'FontSize', 14);
 xlabel('In-Phase (I)', 'Interpreter', 'latex', 'FontSize', 12);
 ylabel('Quadrature (Q)', 'Interpreter', 'latex', 'FontSize', 12);
 grid on; axis square;
