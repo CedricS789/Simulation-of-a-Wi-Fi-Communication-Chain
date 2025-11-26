@@ -34,6 +34,31 @@ tx_time_full = ifft(tx_matrix_full, N_sub);             % Convert frequency-doma
 % Add Cyclic Prefix
 tx_cp = [tx_time_full(end-L_cp+1:end, :); tx_time_full];
 
+% Check orthogonality between 2 sub carriers
+sub_1_time = tx_time_full(1, :);   % Sub-carrier 1 (time domain)
+sub_700_time = tx_time_full(700, :); % Sub-carrier 700 (time domain)
+sub_1200_time = tx_time_full(1200, :); % Sub-carrier 1200 (time domain)
+sub_1400_time = tx_time_full(1400, :); % Sub-carrier 1400 (time domain)
+sub_1600_time = tx_time_full(1600, :); % Sub-carrier 1600 (time domain)
+
+sub_1_freq = tx_matrix_full(1, :);   % Sub-carrier 1 (frequency domain)
+sub_700_freq = tx_matrix_full(700, :); % Sub-carrier 700 (frequency domain)
+sub_1200_freq = tx_matrix_full(1200, :); % Sub-carrier 1200 (frequency domain)
+sub_1400_freq = tx_matrix_full(1400, :); % Sub-carrier 1400 (frequency domain)
+sub_1600_freq = tx_matrix_full(1600, :); % Sub-carrier 1600 (frequency domain)
+
+% Integral between sub_1 and sub_700
+% Correct syntax: trapz(x) or trapz(x, y)
+integral = trapz(sub_1_time .* conj(sub_700_time));
+integral_1200 = trapz(sub_1_time .* conj(sub_1200_time));
+integral_1400 = trapz(sub_1_time .* conj(sub_1400_time));
+integral_1600 = trapz(sub_1_time .* conj(sub_1600_time));
+
+fprintf('Integral between sub_1 and sub_700: %.2e\n', abs(integral));
+fprintf('Integral between sub_1 and sub_1200: %.2e\n', abs(integral_1200));
+fprintf('Integral between sub_1 and sub_1400: %.2e\n', abs(integral_1400));
+fprintf('Integral between sub_1 and sub_1600: %.2e\n', abs(integral_1600));
+
 % Serialize
 tx_signal = tx_cp(:);                                   % (P/S Conversion)
 
@@ -229,3 +254,4 @@ set(gca, 'TickLabelInterpreter', 'latex', 'FontSize', 11);
 
 %   Save the plot
 saveas(gcf, 'Multipath_Viz.png');
+
